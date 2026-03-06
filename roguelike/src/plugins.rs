@@ -75,9 +75,10 @@ impl Plugin for RoguelikePlugin {
                 }
                 #[cfg(target_arch = "wasm32")]
                 {
-                    // SystemTime::now() is unavailable on wasm32-unknown-unknown.
-                    // Use a fixed seed; override by inserting a MapSeed resource.
-                    42
+                    web_time::SystemTime::now()
+                        .duration_since(web_time::SystemTime::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(42)
                 }
             });
 

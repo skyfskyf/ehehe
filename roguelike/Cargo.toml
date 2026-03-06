@@ -13,6 +13,9 @@ ratatui = { version = "0.30.0", default-features = false, features = [
     "underline-color",
 ] }
 
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-time = "1.1"
+
 [features]
 default = ["terminal"]
 # Terminal mode: renders in a terminal using crossterm.
