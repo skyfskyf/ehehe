@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_to_itch:
+        description: "Deploy to itch.io"
+        required: true
+        type: boolean
+        default: true
+  push:
+    tags:
+      - "v*"
+
+env:
+  binary_name: roguelike
+  # TODO: Set to your itch.io page, e.g. "username/game-name".
+  # See: https://itch.io/user/settings/api-keys for generating BUTLER_CREDENTIALS.
+  itch_page: ""
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-unknown
+
+      - name: Install wasm-bindgen-cli
+        run: cargo install wasm-bindgen-cli
+
+      - name: Build WASM
+        working-directory: roguelike
+        run: |
+          cargo build \
+            --profile web-release \
+            --target wasm32-unknown-unknown \
+            --no-default-features \
+            --features windowed
+
+      - name: Run wasm-bindgen
+        working-directory: roguelike
+        run: |
+          wasm-bindgen \
+            --out-dir ./web \
+            --out-name ${{ env.binary_name }} \
+            --target web \
+            --no-typescript \
+            ../target/wasm32-unknown-unknown/web-release/${{ env.binary_name }}.wasm
+
+      - name: Optimize WASM (optional)
+        working-directory: roguelike
+        run: |
+          if command -v wasm-opt &> /dev/null; then
+            wasm-opt -Oz --output ./web/${{ env.binary_name }}_bg.wasm ./web/${{ env.binary_name }}_bg.wasm || true
+          fi
+
+      - name: Upload web build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: roguelike/web
+          retention-days: 7
+
+  deploy-to-itch:
+    needs: build-web
+    runs-on: ubuntu-latest
+    if: >-
+      (github.event_name == 'workflow_dispatch' && inputs.deploy_to_itch) ||
+      (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    steps:
+      - name: Download web artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: web
+          path: web
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=dev-${GITHUB_SHA::8}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to itch.io
+        uses: robpc/itchio-upload-action@v1
+        with:
+          path: web
+          project: ${{ env.itch_page }}
+          channel: web
+          version: ${{ steps.version.outputs.version }}
+          api-key: ${{ secrets.BUTLER_CREDENTIALS }}

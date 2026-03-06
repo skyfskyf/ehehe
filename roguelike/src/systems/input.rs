@@ -447,11 +447,11 @@ pub fn input_system_windowed(
     (mut extra_world_ticks, spectating, dynamic_rng, seed, _spatial): (ResMut<ExtraWorldTicks>, ResMut<SpectatingAfterDeath>, Res<DynamicRng>, Res<MapSeed>, Res<crate::resources::SpatialIndex>),
     mut god_mode: ResMut<crate::resources::GodMode>,
 ) {
-    use bevy::input::keyboard::KeyCode as BevyKey;
+    use bevy::input::keyboard::KeyCode;
 
     // Handle Dead and Victory states: R to restart, auto-advance turns when dead.
     if *game_state.get() == GameState::Dead || *game_state.get() == GameState::Victory {
-        if keys.just_pressed(BevyKey::KeyR) {
+        if keys.just_pressed(KeyCode::KeyR) {
             restart_requested.0 = true;
         }
         return;
@@ -463,7 +463,7 @@ pub fn input_system_windowed(
 
     // If the player is dead, only allow restart and auto-advance time.
     if player_dead.is_some() {
-        if keys.just_pressed(BevyKey::KeyR) {
+        if keys.just_pressed(KeyCode::KeyR) {
             restart_requested.0 = true;
         }
         if spectating.0 {
@@ -483,12 +483,12 @@ pub fn input_system_windowed(
 
     // ── ESC menu input mode ─────────────────────────────────────
     if input_state.mode == InputMode::EscMenu {
-        if keys.just_pressed(BevyKey::KeyQ) {
+        if keys.just_pressed(KeyCode::KeyQ) {
             input_state.mode = InputMode::Game;
             if *game_state.get() == GameState::Paused {
                 next_game_state.set(GameState::Playing);
             }
-        } else if keys.just_pressed(BevyKey::KeyR) {
+        } else if keys.just_pressed(KeyCode::KeyR) {
             input_state.mode = InputMode::Game;
             restart_requested.0 = true;
         }
@@ -503,10 +503,10 @@ pub fn input_system_windowed(
     }
 
     // Helper: check if Shift is held (for Shift+G → God Mode toggle).
-    let shift_held = keys.pressed(BevyKey::ShiftLeft) || keys.pressed(BevyKey::ShiftRight);
+    let shift_held = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
 
     // ── Q key: toggle ESC menu ──────────────────────────
-    if keys.just_pressed(BevyKey::KeyQ) {
+    if keys.just_pressed(KeyCode::KeyQ) {
         input_state.mode = InputMode::EscMenu;
         if *game_state.get() == GameState::Playing {
             next_game_state.set(GameState::Paused);
@@ -519,23 +519,23 @@ pub fn input_system_windowed(
     }
 
     // ── Cursor movement (IJKL) — advances one tick ─────
-    if keys.just_pressed(BevyKey::KeyI) {
+    if keys.just_pressed(KeyCode::KeyI) {
         move_cursor(&mut cursor, 0, 1, &mut player_viewshed, &mut next_turn_state);
-    } else if keys.just_pressed(BevyKey::KeyK) {
+    } else if keys.just_pressed(KeyCode::KeyK) {
         move_cursor(&mut cursor, 0, -1, &mut player_viewshed, &mut next_turn_state);
-    } else if keys.just_pressed(BevyKey::KeyJ) {
+    } else if keys.just_pressed(KeyCode::KeyJ) {
         move_cursor(&mut cursor, -1, 0, &mut player_viewshed, &mut next_turn_state);
-    } else if keys.just_pressed(BevyKey::KeyL) {
+    } else if keys.just_pressed(KeyCode::KeyL) {
         move_cursor(&mut cursor, 1, 0, &mut player_viewshed, &mut next_turn_state);
     }
     // ── Center cursor on player (C) ──
-    else if keys.just_pressed(BevyKey::KeyC) {
+    else if keys.just_pressed(KeyCode::KeyC) {
         cursor.pos = player_pos.as_grid_vec();
         mark_viewshed_dirty(&mut player_viewshed);
         advance_turn(&mut next_turn_state);
     }
     // ── Auto-aim (V) ──
-    else if keys.just_pressed(BevyKey::KeyV) {
+    else if keys.just_pressed(KeyCode::KeyV) {
         let player_vec = player_pos.as_grid_vec();
         let mut best_dist = i32::MAX;
         let mut best_pos = None;
@@ -557,36 +557,36 @@ pub fn input_system_windowed(
         }
     }
     // ── Movement keys (WASD / Arrows) — costs 3 ticks + 2 stamina ───────
-    else if keys.just_pressed(BevyKey::KeyW) || keys.just_pressed(BevyKey::ArrowUp) {
+    else if keys.just_pressed(KeyCode::KeyW) || keys.just_pressed(KeyCode::ArrowUp) {
         extra_world_ticks.0 = 2;
         input_state.ability_stamina_pending = MOVE_STAMINA_COST;
         emit_move(&mut intents.move_intents, &mut next_turn_state, player_entity, 0, 1);
-    } else if keys.just_pressed(BevyKey::KeyS) || keys.just_pressed(BevyKey::ArrowDown) {
+    } else if keys.just_pressed(KeyCode::KeyS) || keys.just_pressed(KeyCode::ArrowDown) {
         extra_world_ticks.0 = 2;
         input_state.ability_stamina_pending = MOVE_STAMINA_COST;
         emit_move(&mut intents.move_intents, &mut next_turn_state, player_entity, 0, -1);
-    } else if keys.just_pressed(BevyKey::KeyA) || keys.just_pressed(BevyKey::ArrowLeft) {
+    } else if keys.just_pressed(KeyCode::KeyA) || keys.just_pressed(KeyCode::ArrowLeft) {
         extra_world_ticks.0 = 2;
         input_state.ability_stamina_pending = MOVE_STAMINA_COST;
         emit_move(&mut intents.move_intents, &mut next_turn_state, player_entity, -1, 0);
-    } else if keys.just_pressed(BevyKey::KeyD) || keys.just_pressed(BevyKey::ArrowRight) {
+    } else if keys.just_pressed(KeyCode::KeyD) || keys.just_pressed(KeyCode::ArrowRight) {
         extra_world_ticks.0 = 2;
         input_state.ability_stamina_pending = MOVE_STAMINA_COST;
         emit_move(&mut intents.move_intents, &mut next_turn_state, player_entity, 1, 0);
     }
     // ── Wait / skip turn (T) ────────────────────────────
-    else if keys.just_pressed(BevyKey::KeyT) {
+    else if keys.just_pressed(KeyCode::KeyT) {
         combat_log.push("You wait...".into());
         advance_turn(&mut next_turn_state);
     }
     // ── Reload weapon (R) — costs 6 ticks ──
-    else if keys.just_pressed(BevyKey::KeyR) {
+    else if keys.just_pressed(KeyCode::KeyR) {
         extra_world_ticks.0 = 5;
         input_state.reload_pending = true;
         advance_turn(&mut next_turn_state);
     }
     // ── Melee wide / roundhouse (F) — costs 2 ticks + stamina ────
-    else if keys.just_pressed(BevyKey::KeyF) {
+    else if keys.just_pressed(KeyCode::KeyF) {
         let has_stamina = player_stamina
             .map(|m| m.current >= ROUNDHOUSE_STAMINA_COST)
             .unwrap_or(false);
@@ -602,7 +602,7 @@ pub fn input_system_windowed(
         }
     }
     // ── Throw sand (G without Shift) — costs stamina ──
-    else if keys.just_pressed(BevyKey::KeyG) && !shift_held {
+    else if keys.just_pressed(KeyCode::KeyG) && !shift_held {
         let has_stamina = player_stamina
             .map(|m| m.current >= SAND_STAMINA_COST)
             .unwrap_or(false);
@@ -629,7 +629,7 @@ pub fn input_system_windowed(
         }
     }
     // ── Toggle God Mode (Shift+G) ───────────────────────
-    else if keys.just_pressed(BevyKey::KeyG) && shift_held {
+    else if keys.just_pressed(KeyCode::KeyG) && shift_held {
         god_mode.0 = !god_mode.0;
         if god_mode.0 {
             combat_log.push("God mode ENABLED — you are invincible.".into());
@@ -638,7 +638,7 @@ pub fn input_system_windowed(
         }
     }
     // ── Throw random item (E) — costs stamina ──
-    else if keys.just_pressed(BevyKey::KeyE) {
+    else if keys.just_pressed(KeyCode::KeyE) {
         let has_stamina = player_stamina
             .map(|m| m.current >= THROW_ITEM_STAMINA_COST)
             .unwrap_or(false);
@@ -656,12 +656,12 @@ pub fn input_system_windowed(
     // ── Inventory slots (1-6) ──
     else {
         let digit_keys = [
-            (BevyKey::Digit1, 0usize),
-            (BevyKey::Digit2, 1),
-            (BevyKey::Digit3, 2),
-            (BevyKey::Digit4, 3),
-            (BevyKey::Digit5, 4),
-            (BevyKey::Digit6, 5),
+            (KeyCode::Digit1, 0usize),
+            (KeyCode::Digit2, 1),
+            (KeyCode::Digit3, 2),
+            (KeyCode::Digit4, 3),
+            (KeyCode::Digit5, 4),
+            (KeyCode::Digit6, 5),
         ];
         for &(key, idx) in &digit_keys {
             if keys.just_pressed(key) {
