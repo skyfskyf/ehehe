@@ -66,10 +66,20 @@ impl Plugin for RoguelikePlugin {
             .get_resource::<MapSeed>()
             .map(|s| s.0)
             .unwrap_or_else(|| {
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map(|d| d.as_millis() as u64)
-                    .unwrap_or(42)
+                #[cfg(not(target_arch = "wasm32"))]
+                {
+                    std::time::SystemTime::now()
+                        .duration_since(std::time::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(42)
+                }
+                #[cfg(target_arch = "wasm32")]
+                {
+                    web_time::SystemTime::now()
+                        .duration_since(web_time::SystemTime::UNIX_EPOCH)
+                        .map(|d| d.as_millis() as u64)
+                        .unwrap_or(42)
+                }
             });
 
         let game_map = GameMap::new(800, 560, seed);
@@ -147,8 +157,13 @@ struct InputPlugin;
 
 impl Plugin for InputPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreUpdate, input::input_system)
-            .add_systems(PreUpdate, restart_system);
+        #[cfg(not(feature = "windowed"))]
+        app.add_systems(PreUpdate, input::input_system);
+
+        #[cfg(feature = "windowed")]
+        app.add_systems(PreUpdate, input::input_system_windowed);
+
+        app.add_systems(PreUpdate, restart_system);
     }
 }
 

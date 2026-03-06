@@ -5,10 +5,28 @@ edition = "2024"
 
 [dependencies]
 bevy = { version = "0.18", default-features = false, features = ["bevy_state"] }
-bevy_ratatui = { path = "../bevy_ratatui" }
+bevy_ratatui = { path = "../bevy_ratatui", default-features = false, features = [
+    "std",
+    "async_executor",
+] }
 ratatui = { version = "0.30.0", default-features = false, features = [
     "underline-color",
 ] }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-time = "1.1"
+
+[features]
+default = ["terminal"]
+# Terminal mode: renders in a terminal using crossterm.
+terminal = [
+    "bevy_ratatui/crossterm",
+    "bevy_ratatui/keyboard",
+    "bevy_ratatui/mouse",
+]
+# Windowed mode: renders ratatui output as a 2D texture in a Bevy window.
+# Used for WASM / itch.io builds.
+windowed = ["bevy_ratatui/windowed"]
 
 # Enable a small amount of optimization in debug mode
 [profile.dev]
@@ -17,3 +35,9 @@ opt-level = 1
 # Enable high optimizations for dependencies (incl. Bevy), but not for our code:
 [profile.dev.package."*"]
 opt-level = 3
+
+# Optimized profile for web (WASM) release builds.
+[profile.web-release]
+inherits = "release"
+opt-level = "s"
+strip = "debuginfo"
